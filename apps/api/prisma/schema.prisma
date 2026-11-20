@@ -1,0 +1,118 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model user {
+  id           String   @id @default(uuid()) @db.Uuid
+  username     String   @unique @db.VarChar(50)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  votes        vote[]
+
+  @@map("users")
+}
+
+model map {
+  id                  String  @id @db.Uuid
+  displayName         String  @map("display_name") @db.VarChar(100)
+  tacticalDescription String? @map("tactical_description") @db.Text
+  displayIcon         String? @map("display_icon") @db.Text
+  splash              String? @db.Text
+  isActive            Boolean @default(true) @map("is_active")
+  votes               vote[]
+
+  @@map("maps")
+}
+
+model agentRole {
+  id          String  @id @db.Uuid
+  displayName String  @map("display_name") @db.VarChar(50)
+  description String  @db.Text
+  displayIcon String? @map("display_icon") @db.Text
+  agents      agent[]
+
+  @@map("agent_roles")
+}
+
+model agent {
+  id                       String         @id @db.Uuid
+  roleId                   String         @map("role_id") @db.Uuid
+  displayName              String         @map("display_name") @db.VarChar(100)
+  description              String         @db.Text
+  displayIcon              String?        @map("display_icon") @db.Text
+  fullPortrait             String?        @map("full_portrait") @db.Text
+  background               String?        @db.Text
+  backgroundGradientColors String[]       @default([]) @map("background_gradient_colors") @db.Text
+  isActive                 Boolean        @default(true) @map("is_active")
+  role                     agentRole      @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  abilities                agentAbility[]
+  votes                    vote[]
+
+  @@index([roleId])
+  @@map("agents")
+}
+
+model agentAbility {
+  agentId     String  @map("agent_id") @db.Uuid
+  slot        String  @db.VarChar(50)
+  displayName String  @map("display_name") @db.VarChar(100)
+  description String  @db.Text
+  displayIcon String? @map("display_icon") @db.Text
+  agent       agent   @relation(fields: [agentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([agentId, slot])
+  @@map("agent_abilities")
+}
+
+model weapon {
+  id           String              @id @db.Uuid
+  displayName  String              @map("display_name") @db.VarChar(100)
+  displayIcon  String?             @map("display_icon") @db.Text
+  category     String              @db.VarChar(100)
+  cost         Int?
+  isActive     Boolean             @default(true) @map("is_active")
+  damageRanges weaponDamageRange[]
+  votes        vote[]
+
+  @@map("weapons")
+}
+
+model weaponDamageRange {
+  weaponId         String @map("weapon_id") @db.Uuid
+  rangeStartMeters Int    @map("range_start_meters")
+  rangeEndMeters   Int    @map("range_end_meters")
+  headDamage       Float  @map("head_damage") @db.DoublePrecision
+  bodyDamage       Float  @map("body_damage") @db.DoublePrecision
+  legDamage        Float  @map("leg_damage") @db.DoublePrecision
+  weapon           weapon @relation(fields: [weaponId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([weaponId, rangeStartMeters, rangeEndMeters])
+  @@map("weapon_damage_ranges")
+}
+
+model vote {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  mapId     String   @map("map_id") @db.Uuid
+  agentId   String   @map("agent_id") @db.Uuid
+  weaponId  String   @map("weapon_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user      user     @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  map       map      @relation(fields: [mapId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  agent     agent    @relation(fields: [agentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  weapon    weapon   @relation(fields: [weaponId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([userId, mapId])
+  @@index([mapId, agentId])
+  @@index([mapId, weaponId])
+  @@map("votes")
+}
