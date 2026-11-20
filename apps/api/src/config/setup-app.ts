@@ -14,7 +14,9 @@ export function setupApp(app: INestApplication): void {
   app.enableCors({ origin: origins.length ? origins : false });
   const config = new DocumentBuilder()
     .setTitle("Valorant Community API")
-    .setDescription("Infrastructure, authentication and Valorant catalog")
+    .setDescription(
+      "Infrastructure, authentication, Valorant catalog, voting and community results",
+    )
     .setVersion("0.3.0")
     .addBearerAuth()
     .build();

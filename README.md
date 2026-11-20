@@ -9,8 +9,8 @@ Desarrollada como parte de una [prueba técnica Full Stack](https://david-lucidb
 - [x] Infraestructura, base de datos y entorno Docker.
 - [x] Registro de usuarios y autenticación JWT.
 - [x] Integración con Valorant API y catálogo de mapas, agentes y armas.
-- [ ] Sistema de votaciones por mapa.
-- [ ] Resultados de la comunidad.
+- [x] Sistema de votaciones por mapa.
+- [x] Resultados de la comunidad.
 - [ ] Frontend e integración final.
 
 ## Tecnologías
@@ -131,18 +131,21 @@ http://localhost:3000/api
 
 ### Endpoints disponibles
 
-| Método | Ruta                     | Acceso     |
-| ------ | ------------------------ | ---------- |
-| GET    | `/api/health`            | Público    |
-| POST   | `/api/auth/register`     | Público    |
-| POST   | `/api/auth/login`        | Público    |
-| GET    | `/api/auth/me`           | Bearer JWT |
-| GET    | `/api/maps`              | Público    |
-| GET    | `/api/maps/:mapId`       | Público    |
-| GET    | `/api/agents`            | Público    |
-| GET    | `/api/agents/:agentId`   | Público    |
-| GET    | `/api/weapons`           | Público    |
-| GET    | `/api/weapons/:weaponId` | Público    |
+| Método | Ruta                       | Acceso     |
+| ------ | -------------------------- | ---------- |
+| GET    | `/api/health`              | Público    |
+| POST   | `/api/auth/register`       | Público    |
+| POST   | `/api/auth/login`          | Público    |
+| GET    | `/api/auth/me`             | Bearer JWT |
+| GET    | `/api/maps`                | Público    |
+| GET    | `/api/maps/:mapId`         | Público    |
+| GET    | `/api/agents`              | Público    |
+| GET    | `/api/agents/:agentId`     | Público    |
+| GET    | `/api/weapons`             | Público    |
+| GET    | `/api/weapons/:weaponId`   | Público    |
+| PUT    | `/api/maps/:mapId/vote`    | Bearer JWT |
+| GET    | `/api/maps/:mapId/vote`    | Bearer JWT |
+| GET    | `/api/maps/:mapId/results` | Público    |
 
 ### 1. Registrar un usuario
 
@@ -202,6 +205,29 @@ Para consultar un elemento específico, copia su identificador desde la respuest
 Las listas incluyen elementos activos. Los agentes incluyen rol y habilidades; las armas incluyen rangos de daño cuando están disponibles.
 
 Los elementos retirados siguen accesibles por su identificador.
+
+### 5. Registrar o consultar tu voto
+
+**PUT** `{{baseUrl}}/maps/:mapId/vote`, con **Authorization → Bearer Token**. Sustituye los identificadores por los obtenidos del catálogo activo:
+
+```json
+{
+  "agentId": "<GUID del agente>",
+  "weaponId": "<GUID del arma>"
+}
+```
+
+Devuelve HTTP 200 con `id`, `mapId`, `agentId`, `weaponId`, `createdAt` y `updatedAt`. Repetir el PUT cambia tu voto para ese mapa; si la selección es idéntica, conserva también `updatedAt`. No envíes `userId`: se obtiene del JWT.
+
+**GET** sobre la misma ruta devuelve tu voto o JSON `null` (HTTP 200). Permite consultar elecciones históricas aunque sus elementos estén inactivos. El PUT rechaza identificadores mal formados (400), inexistentes (404) o inactivos (422). Ambas operaciones requieren JWT válido (401) y devuelven 503 si el almacenamiento no está disponible.
+
+### 6. Consultar los resultados de la comunidad
+
+**GET** `{{baseUrl}}/maps/:mapId/results`, sin autenticación. También está disponible en la sección **votes** de Swagger.
+
+Devuelve `mapId`, `totalVotes` y los rankings `agents` y `weapons`. Cada elemento incluye `id`, `displayName`, `displayIcon` (puede ser `null`), `votes` y `percentage`. Solo aparecen elecciones con votos, incluidas las retiradas del catálogo.
+
+Los rankings se ordenan por votos descendentes, con desempate por nombre y UUID. Los porcentajes usan el total del mapa y hasta dos decimales. Un mapa sin votos devuelve total cero y ambas listas vacías; un mapa inexistente devuelve 404.
 
 ## Pruebas y validaciones
 
@@ -275,6 +301,10 @@ pnpm build
 | `pnpm typecheck`   | Comprueba los tipos de TypeScript.                       |
 | `pnpm build`       | Compila el proyecto.                                     |
 
+Las pruebas de votaciones cubren creación, edición, idempotencia sin escritura, aislamiento por usuario/mapa, autenticación, validación, historial inactivo, concurrencia, restricciones PostgreSQL, errores de almacenamiento y contrato OpenAPI.
+
+Las pruebas de resultados cubren acceso público, mapas sin votos, agregación y porcentajes, aislamiento por mapa, edición de votos, empates, historial inactivo y coherencia durante escrituras concurrentes.
+
 Las pruebas automatizadas complementan las consultas HTTP y SQL registradas en [DOC.md](DOC.md). Swagger y Postman permiten explorar la API, sin que esto implique una revisión manual documentada con esas interfaces.
 
 ## Solución de problemas
@@ -309,7 +339,7 @@ apps/
 │   │   ├── config/      # Configuración y entorno
 │   │   ├── database/    # Integración con Prisma
 │   │   ├── common/      # Utilidades compartidas
-│   │   └── modules/     # Health, auth, users y catálogo
+│   │   └── modules/     # Health, auth, users, catálogo y votes
 │   ├── test/            # Pruebas automatizadas
 │   └── Dockerfile
 └── web/                 # Frontend pendiente

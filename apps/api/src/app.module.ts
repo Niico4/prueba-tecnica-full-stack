@@ -5,6 +5,7 @@ import { AgentsModule } from "./modules/agents/agents.module.js";
 import { AuthModule } from "./modules/auth/auth.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
 import { MapsModule } from "./modules/maps/maps.module.js";
+import { VotesModule } from "./modules/votes/votes.module.js";
 import { WeaponsModule } from "./modules/weapons/weapons.module.js";
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { WeaponsModule } from "./modules/weapons/weapons.module.js";
     AgentsModule,
     WeaponsModule,
     AuthModule,
+    VotesModule,
   ],
 })
 export class AppModule {}
