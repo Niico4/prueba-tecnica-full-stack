@@ -11,27 +11,27 @@ Desarrollada como parte de una [prueba técnica Full Stack](https://david-lucidb
 - [x] Integración con Valorant API y catálogo de mapas, agentes y armas.
 - [x] Sistema de votaciones por mapa.
 - [x] Resultados de la comunidad.
-- [ ] Frontend e integración final.
+- [x] Frontend e integración final.
 
 ## Tecnologías
 
-| Área                 | Tecnologías                               |
-| -------------------- | ----------------------------------------- |
-| Backend              | NestJS, TypeScript                        |
-| Base de datos        | PostgreSQL, Prisma ORM                    |
-| Autenticación        | JWT, bcrypt                               |
-| Integración externa  | [Valorant API](https://valorant-api.com/) |
-| Documentación API    | Swagger / OpenAPI                         |
-| Pruebas              | Vitest, Supertest                         |
-| Herramientas         | pnpm Workspaces, Biome, Docker Compose    |
-| Frontend (pendiente) | React, Vite, TypeScript                   |
+| Área                | Tecnologías                                                  |
+| ------------------- | ------------------------------------------------------------ |
+| Backend             | NestJS, TypeScript                                           |
+| Base de datos       | PostgreSQL, Prisma ORM                                       |
+| Autenticación       | JWT, bcrypt                                                  |
+| Integración externa | [Valorant API](https://valorant-api.com/)                    |
+| Documentación API   | Swagger / OpenAPI                                            |
+| Pruebas             | Vitest, Supertest                                            |
+| Herramientas        | pnpm Workspaces, Biome, Docker Compose                       |
+| Frontend            | React, Vite, TypeScript, Tailwind, shadcn/ui, Axios, Zustand |
 
 ## Ejecutar el proyecto con Docker
 
 ### Requisitos
 
 - Docker Engine o Docker Desktop con Docker Compose v2 y Docker en ejecución.
-- Puertos 3000 (API) y 5432 (PostgreSQL) disponibles.
+- Puertos 5173 (web), 3000 (API) y 5432 (PostgreSQL) disponibles.
 - Conexión a Internet para construir las imágenes y cargar el catálogo inicial.
 
 Todos los comandos siguientes se ejecutan desde la raíz del repositorio clonado.
@@ -58,7 +58,7 @@ Si no tienes OpenSSL, utiliza un generador criptográficamente seguro equivalent
 docker compose up -d --build --wait
 ```
 
-Docker Compose inicia PostgreSQL, aplica las migraciones versionadas mediante el servicio `migrate` y levanta la API.
+Docker Compose inicia PostgreSQL, aplica las migraciones versionadas mediante el servicio `migrate` y levanta la API y el frontend estático servido por Nginx.
 
 No necesitas ejecutar las migraciones manualmente con esta opción.
 
@@ -93,12 +93,13 @@ Respuesta esperada (HTTP 200):
 
 | Recurso         | URL                                 |
 | --------------- | ----------------------------------- |
+| Frontend        | http://localhost:5173               |
 | API REST (base) | http://localhost:3000/api           |
 | Swagger UI      | http://localhost:3000/api/docs      |
 | OpenAPI JSON    | http://localhost:3000/api/docs-json |
 | Health check    | http://localhost:3000/api/health    |
 
-Las URLs utilizan el puerto predeterminado. Si modificas `PORT` en `.env`, actualiza las direcciones correspondientes.
+Las URLs utilizan los puertos predeterminados. `PORT` cambia el puerto público de la API y la URL usada al construir el frontend; `WEB_PORT` cambia el puerto web. Si cambias el origen web, actualiza `CORS_ORIGINS`. Para otro host, define `VITE_API_BASE_URL` en `.env` con la URL pública completa (incluido `/api`) y reconstruye web. Esta variable se incorpora al build, no se lee al arrancar Nginx. No uses `http://api:3000`: ese nombre solo existe dentro de Docker.
 
 ### Administrar los servicios
 
@@ -116,6 +117,33 @@ docker compose down
 `docker compose down` conserva los datos de PostgreSQL mediante el volumen persistente.
 
 **Importante:** `docker compose down -v` también elimina los volúmenes del proyecto y sus datos. Utilízalo únicamente cuando quieras reiniciar la base.
+
+## Desarrollo local desde la raíz
+
+Requiere Node.js 24 (ver `.node-version`) y pnpm 10.33.0. Configura `.env` y `JWT_SECRET` como se indica arriba, y prepara el frontend:
+
+```bash
+cp apps/web/.env.example apps/web/.env
+pnpm install --frozen-lockfile
+docker compose up -d --wait db
+pnpm db:deploy
+pnpm build
+pnpm catalog:sync
+pnpm dev
+```
+
+`pnpm dev` inicia ambos workspaces en paralelo: web en http://localhost:5173 y API en http://localhost:3000. No ejecutes simultáneamente los servicios Docker `api`/`web` en esos mismos puertos. El cliente Prisma se genera automáticamente antes de desarrollar, comprobar tipos, compilar o ejecutar pruebas del backend.
+
+La API carga el `.env` raíz; Vite carga `apps/web/.env`. Ajusta allí `VITE_API_BASE_URL` si cambias el puerto de la API. Solo las variables `VITE_` son públicas; los secretos permanecen en el entorno del backend. No hay proxy de Vite.
+
+| Comando                         | Alcance                                                 |
+| ------------------------------- | ------------------------------------------------------- |
+| `pnpm dev`                      | Ambos workspaces en modo desarrollo.                    |
+| `pnpm dev:api` / `pnpm dev:web` | Solo el workspace indicado.                             |
+| `pnpm start`                    | Backend compilado.                                      |
+| `pnpm lint` / `pnpm format`     | Biome centralizado: comprobar / corregir.               |
+| `pnpm typecheck` / `pnpm build` | Ambos workspaces.                                       |
+| `pnpm test` / `pnpm test:e2e`   | Pruebas existentes del backend; web aún no tiene suite. |
 
 ## Probar la API
 
@@ -342,7 +370,7 @@ apps/
 │   │   └── modules/     # Health, auth, users, catálogo y votes
 │   ├── test/            # Pruebas automatizadas
 │   └── Dockerfile
-└── web/                 # Frontend pendiente
+└── web/                 # Exploración, autenticación y votación
 DOC.md                   # Arquitectura, modelo y decisiones
 compose.yaml
 pnpm-workspace.yaml
@@ -354,3 +382,9 @@ pnpm-lock.yaml
 [DOC.md](DOC.md) reúne arquitectura, flujo previsto, ERD completo, decisiones técnicas y uso de IA, distinguiendo lo implementado de lo pendiente.
 
 Consulta `.env.example` para la configuración de entorno.
+
+## Frontend
+
+La configuración y los comandos se describen en **Desarrollo local desde la raíz**.
+
+Disponibles: Maps Explorer, `/login`, `/register` y `/maps/:mapId`. El detalle público permite explorar agentes y armas; la sesión verificada permite consultar, crear o modificar el voto propio. El detalle también muestra los rankings públicos de agentes y armas, el total de votaciones y los porcentajes del backend; se actualizan después de guardar el voto sin recargar la página.

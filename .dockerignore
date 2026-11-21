@@ -8,3 +8,8 @@ node_modules
 **/.env
 **/.env.*
 **/src/generated
+**/*.tsbuildinfo
+**/*.log
+**/.vite
+**/.cache
+.pnpm-store

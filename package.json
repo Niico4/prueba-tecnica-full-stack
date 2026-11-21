@@ -7,19 +7,21 @@
     "node": ">=24 <27"
   },
   "scripts": {
-    "dev": "pnpm --filter @valorant/api dev",
-    "build": "pnpm --filter @valorant/api build",
+    "dev": "pnpm --parallel -r dev",
+    "build": "pnpm -r build",
     "start": "pnpm --filter @valorant/api start",
     "lint": "biome check .",
     "format": "biome check --write .",
-    "typecheck": "pnpm --filter @valorant/api typecheck",
-    "test": "pnpm --filter @valorant/api test",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
     "test:e2e": "pnpm --filter @valorant/api test:e2e",
     "db:generate": "pnpm --filter @valorant/api db:generate",
     "db:validate": "pnpm --filter @valorant/api db:validate",
     "db:migrate": "pnpm --filter @valorant/api db:migrate",
     "db:deploy": "pnpm --filter @valorant/api db:deploy",
-    "catalog:sync": "pnpm --filter @valorant/api catalog:sync"
+    "catalog:sync": "pnpm --filter @valorant/api catalog:sync",
+    "dev:web": "pnpm --filter @valorant/web dev",
+    "dev:api": "pnpm --filter @valorant/api dev"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.8"

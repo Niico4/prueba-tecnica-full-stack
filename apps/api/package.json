@@ -14,7 +14,12 @@
     "db:validate": "prisma validate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "catalog:sync": "node dist/modules/valorant/sync.js"
+    "catalog:sync": "node dist/modules/valorant/sync.js",
+    "lint": "biome check .",
+    "predev": "pnpm db:generate",
+    "pretypecheck": "pnpm db:generate",
+    "pretest": "pnpm db:generate",
+    "pretest:e2e": "pnpm db:generate"
   },
   "dependencies": {
     "@nestjs/common": "12.6.0",

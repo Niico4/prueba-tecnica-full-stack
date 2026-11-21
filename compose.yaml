@@ -6,56 +6,78 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
     ports:
-      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test:
-        [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+        ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
       interval: 5s
       timeout: 3s
       retries: 10
+
   migrate:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-    command: [pnpm, db:deploy]
+    command: ['pnpm', 'db:deploy']
     depends_on:
       db:
         condition: service_healthy
-    restart: "no"
+    restart: 'no'
+
   api:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
     environment:
-      VALORANT_API_BASE_URL: ${VALORANT_API_BASE_URL:-https://valorant-api.com/v1}
-      VALORANT_API_TIMEOUT_MS: ${VALORANT_API_TIMEOUT_MS:-10000}
-      JWT_SECRET: ${JWT_SECRET:?Generate JWT_SECRET in .env}
-      JWT_EXPIRES_IN_SECONDS: ${JWT_EXPIRES_IN_SECONDS:-3600}
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      JWT_EXPIRES_IN_SECONDS: ${JWT_EXPIRES_IN_SECONDS:-3600}
+      VALORANT_API_BASE_URL: ${VALORANT_API_BASE_URL:-https://valorant-api.com/v1}
+      VALORANT_API_TIMEOUT_MS: ${VALORANT_API_TIMEOUT_MS:-10000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:${WEB_PORT:-5173}}
       PORT: 3000
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
     ports:
-      - "127.0.0.1:${PORT:-3000}:3000"
+      - '127.0.0.1:${PORT:-3000}:3000'
     depends_on:
       migrate:
         condition: service_completed_successfully
     healthcheck:
       test:
-        [
-          CMD,
-          node,
-          -e,
-          "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
-        ]
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:${PORT:-3000}/api}
+    ports:
+      - '127.0.0.1:${WEB_PORT:-5173}:4173'
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:4173/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   db-test:
     image: postgres:17-bookworm
     profiles: [test]
@@ -64,13 +86,14 @@ services:
       POSTGRES_PASSWORD: test_only
       POSTGRES_DB: valorant_test
     ports:
-      - "127.0.0.1:5433:5432"
+      - '127.0.0.1:5433:5432'
     tmpfs:
       - /var/lib/postgresql/data
     healthcheck:
-      test: [CMD-SHELL, pg_isready -U valorant_test -d valorant_test]
+      test: ['CMD-SHELL', 'pg_isready -U valorant_test -d valorant_test']
       interval: 2s
       timeout: 3s
       retries: 15
+
 volumes:
   postgres_data:
