@@ -1,88 +1,69 @@
 # Valorant Community
 
-Aplicación web donde los jugadores de VALORANT pueden elegir sus agentes y armas favoritos para cada mapa y consultar las preferencias de la comunidad.
+Aplicación web para explorar mapas, agentes y armas de **VALORANT**, elegir un agente y un arma favoritos por mapa y consultar las votaciones de la comunidad.
 
 Desarrollada como parte de una [prueba técnica Full Stack](https://david-lucidbot.github.io/technical-test/).
 
-## Estado del proyecto
-
-- [x] Infraestructura, base de datos y entorno Docker.
-- [x] Registro de usuarios y autenticación JWT.
-- [x] Integración con Valorant API y catálogo de mapas, agentes y armas.
-- [x] Sistema de votaciones por mapa.
-- [x] Resultados de la comunidad.
-- [x] Frontend e integración final.
-
 ## Tecnologías
 
-| Área                | Tecnologías                                                  |
-| ------------------- | ------------------------------------------------------------ |
-| Backend             | NestJS, TypeScript                                           |
-| Base de datos       | PostgreSQL, Prisma ORM                                       |
-| Autenticación       | JWT, bcrypt                                                  |
-| Integración externa | [Valorant API](https://valorant-api.com/)                    |
-| Documentación API   | Swagger / OpenAPI                                            |
-| Pruebas             | Vitest, Supertest                                            |
-| Herramientas        | pnpm Workspaces, Biome, Docker Compose                       |
-| Frontend            | React, Vite, TypeScript, Tailwind, shadcn/ui, Axios, Zustand |
+| Área             | Tecnologías                                                      |
+| ---------------- | ---------------------------------------------------------------- |
+| Frontend         | React, Vite, TypeScript, Tailwind CSS, shadcn/ui, Axios, Zustand |
+| Backend          | NestJS, TypeScript, JWT, bcrypt                                  |
+| Datos            | PostgreSQL, Prisma                                               |
+| Catálogo externo | [Valorant API](https://valorant-api.com/)                        |
+| Herramientas     | pnpm Workspaces, Biome, Docker Compose                           |
+| Pruebas y API    | Vitest, Supertest, Swagger / OpenAPI                             |
 
-## Ejecutar el proyecto con Docker
+## Cómo ejecutar la aplicación
 
-### Requisitos
+Hay **dos formas de ejecutar el proyecto**. Elige una según lo que necesites; **no es necesario seguir ambas**. Todos los comandos se ejecutan desde la **raíz del repositorio**.
 
-- Docker Engine o Docker Desktop con Docker Compose v2 y Docker en ejecución.
-- Puertos 5173 (web), 3000 (API) y 5432 (PostgreSQL) disponibles.
-- Conexión a Internet para construir las imágenes y cargar el catálogo inicial.
+- **Opción 1 — Docker:** levanta toda la aplicación sin instalar Node.js ni pnpm en tu computadora. **Recomendada para evaluar la prueba.**
+- **Opción 2 — pnpm + PostgreSQL en Docker:** ejecuta React y NestJS desde el código fuente y utiliza Docker únicamente para la base de datos. **Recomendada para trabajar en el proyecto.**
 
-Todos los comandos siguientes se ejecutan desde la raíz del repositorio clonado.
+Por defecto, la web utiliza `http://localhost:5173` y la API `http://localhost:3000/api`. Asegúrate de que esos puertos y el `5432` estén disponibles.
 
-### 1. Configurar las variables de entorno
+### Opción 1 — Ejecutar todo con Docker
+
+**Requisitos:** Docker Desktop o Docker Engine con Compose v2, en ejecución, y conexión a Internet para construir las imágenes y sincronizar el catálogo.
+
+**1. Configurar el entorno**
 
 ```bash
 cp .env.example .env
-```
-
-Genera un secreto para la autenticación JWT:
-
-```bash
 openssl rand -hex 32
 ```
 
-Abre `.env` y asigna el valor generado a `JWT_SECRET`. La aplicación requiere un secreto de al menos 32 bytes, sin espacios al principio ni al final.
+Copia el valor generado por el segundo comando en `JWT_SECRET` dentro del archivo `.env`. Conserva o ajusta los valores de PostgreSQL del ejemplo. El secreto debe tener al menos 32 bytes y no contener espacios adicionales.
 
-Si no tienes OpenSSL, utiliza un generador criptográficamente seguro equivalente. Los demás valores de ejemplo son para uso local.
-
-### 2. Iniciar los servicios
+**2. Construir e iniciar los servicios**
 
 ```bash
 docker compose up -d --build --wait
 ```
 
-Docker Compose inicia PostgreSQL, aplica las migraciones versionadas mediante el servicio `migrate` y levanta la API y el frontend estático servido por Nginx.
+Docker Compose inicia PostgreSQL, ejecuta las migraciones mediante el servicio `migrate` y levanta la API y el frontend compilado. **No hace falta ejecutar `pnpm install` ni aplicar migraciones manualmente.**
 
-No necesitas ejecutar las migraciones manualmente con esta opción.
-
-### 3. Cargar el catálogo de VALORANT
+**3. Sincronizar el catálogo inicial**
 
 ```bash
 docker compose exec -T api pnpm catalog:sync
 ```
 
-Este comando importa mapas, agentes, roles, habilidades, armas y rangos de daño desde Valorant API a PostgreSQL.
+Este paso importa mapas, agentes, roles, habilidades, armas y rangos de daño desde Valorant API. **Es necesario en una base de datos nueva**; sin él, los listados del catálogo estarán vacíos. La sincronización es manual y se puede repetir para actualizar los datos sin duplicarlos.
 
-Puedes repetirlo para actualizar el catálogo sin duplicar registros.
+**4. Abrir y comprobar la aplicación**
 
-Si se detectan UUID ausentes, la sincronización aborta sin cambiar datos. Solo después de confirmar que son retiradas reales, repite el comando añadiendo `--retire-id=UUID` por cada ausente. La lista debe ser exacta; si el UUID permanece en la línea base revisada, el argumento seguirá siendo necesario en futuras ejecuciones. No lo uses para eludir un fallo del proveedor.
+Abre [http://localhost:5173](http://localhost:5173) y prueba la exploración de mapas, el registro, el inicio de sesión, la votación y los resultados.
 
-> La sincronización es manual. Si omites este paso en una instalación nueva, los endpoints del catálogo devolverán listas vacías.
-
-### 4. Comprobar que la API está disponible
+Para comprobar la API:
 
 ```bash
 curl --fail http://localhost:3000/api/health
 ```
 
-Respuesta esperada (HTTP 200):
+Respuesta esperada:
 
 ```json
 {
@@ -91,95 +72,119 @@ Respuesta esperada (HTTP 200):
 }
 ```
 
-| Recurso         | URL                                 |
-| --------------- | ----------------------------------- |
-| Frontend        | http://localhost:5173               |
-| API REST (base) | http://localhost:3000/api           |
-| Swagger UI      | http://localhost:3000/api/docs      |
-| OpenAPI JSON    | http://localhost:3000/api/docs-json |
-| Health check    | http://localhost:3000/api/health    |
-
-Las URLs utilizan los puertos predeterminados. `PORT` cambia el puerto público de la API y la URL usada al construir el frontend; `WEB_PORT` cambia el puerto web. Si cambias el origen web, actualiza `CORS_ORIGINS`. Para otro host, define `VITE_API_BASE_URL` en `.env` con la URL pública completa (incluido `/api`) y reconstruye web. Esta variable se incorpora al build, no se lee al arrancar Nginx. No uses `http://api:3000`: ese nombre solo existe dentro de Docker.
-
-### Administrar los servicios
+**Administrar contenedores**
 
 ```bash
-# Consultar contenedores
-docker compose ps -a
-
-# Consultar logs
-docker compose logs -f api
-
-# Detener y eliminar contenedores
-docker compose down
+docker compose ps -a           # Ver estado
+docker compose logs -f api      # Ver logs de la API
+docker compose logs -f web      # Ver logs del frontend
+docker compose down             # Detener y eliminar contenedores
 ```
 
-`docker compose down` conserva los datos de PostgreSQL mediante el volumen persistente.
+`docker compose down` **conserva** el volumen de PostgreSQL. Evita `docker compose down -v` salvo que quieras eliminar también los datos almacenados.
 
-**Importante:** `docker compose down -v` también elimina los volúmenes del proyecto y sus datos. Utilízalo únicamente cuando quieras reiniciar la base.
+### Opción 2 — Ejecutar React y NestJS con pnpm
 
-## Desarrollo local desde la raíz
+**Requisitos:** Node.js 24 (ver `.node-version`), pnpm 10.33.0 y Docker con Compose v2 para PostgreSQL.
 
-Requiere Node.js 24 (ver `.node-version`) y pnpm 10.33.0. Configura `.env` y `JWT_SECRET` como se indica arriba, y prepara el frontend:
+En esta modalidad, **solo PostgreSQL se ejecuta en Docker**. React usa el servidor de desarrollo de Vite y NestJS se ejecuta desde pnpm. No levantes simultáneamente los servicios `api` y `web` de Compose, porque competirán por los mismos puertos.
+
+**1. Configurar las variables de entorno**
 
 ```bash
+cp .env.example .env
 cp apps/web/.env.example apps/web/.env
+openssl rand -hex 32
+```
+
+- En el `.env` de la raíz, configura `JWT_SECRET` con el valor generado y revisa las credenciales de PostgreSQL. `DATABASE_URL` debe conectar a PostgreSQL desde tu computadora, normalmente mediante `localhost:5432`, **no** mediante el nombre `db` de Docker.
+- En `apps/web/.env`, verifica que `VITE_API_BASE_URL=http://localhost:3000/api`.
+
+El backend usa la configuración raíz y Vite usa la de `apps/web`. Las variables `VITE_*` son públicas y se incluyen en el cliente: **no coloques secretos allí**.
+
+**2. Instalar las dependencias de ambos workspaces**
+
+```bash
 pnpm install --frozen-lockfile
+```
+
+Es una sola instalación desde la raíz. pnpm instala las dependencias necesarias de `apps/api` y `apps/web`; no ejecutes instalaciones separadas dentro de cada carpeta.
+
+**3. Iniciar únicamente PostgreSQL**
+
+```bash
 docker compose up -d --wait db
+```
+
+**4. Aplicar las migraciones**
+
+```bash
 pnpm db:deploy
-pnpm build
+```
+
+**5. Cargar el catálogo**
+
+```bash
 pnpm catalog:sync
+```
+
+**6. Iniciar las dos aplicaciones**
+
+```bash
 pnpm dev
 ```
 
-`pnpm dev` inicia ambos workspaces en paralelo: web en http://localhost:5173 y API en http://localhost:3000. No ejecutes simultáneamente los servicios Docker `api`/`web` en esos mismos puertos. El cliente Prisma se genera automáticamente antes de desarrollar, comprobar tipos, compilar o ejecutar pruebas del backend.
+Este comando inicia el backend y el frontend en paralelo. Puedes abrir la web en [http://localhost:5173](http://localhost:5173) y consultar la API en [http://localhost:3000/api](http://localhost:3000/api). Detén los procesos con `Ctrl + C`.
 
-La API carga el `.env` raíz; Vite carga `apps/web/.env`. Ajusta allí `VITE_API_BASE_URL` si cambias el puerto de la API. Solo las variables `VITE_` son públicas; los secretos permanecen en el entorno del backend. No hay proxy de Vite.
+El cliente Prisma se genera automáticamente mediante los scripts existentes del backend. **No necesitas ejecutar `pnpm build` para desarrollar.**
 
-| Comando                         | Alcance                                                 |
-| ------------------------------- | ------------------------------------------------------- |
-| `pnpm dev`                      | Ambos workspaces en modo desarrollo.                    |
-| `pnpm dev:api` / `pnpm dev:web` | Solo el workspace indicado.                             |
-| `pnpm start`                    | Backend compilado.                                      |
-| `pnpm lint` / `pnpm format`     | Biome centralizado: comprobar / corregir.               |
-| `pnpm typecheck` / `pnpm build` | Ambos workspaces.                                       |
-| `pnpm test` / `pnpm test:e2e`   | Pruebas existentes del backend; web aún no tiene suite. |
+Si anteriormente ejecutaste la opción 1, detén sus contenedores con `docker compose down` antes de iniciar esta opción; así evitas conflictos de puertos sin borrar los datos.
 
-## Probar la API
+### Direcciones disponibles
 
-Puedes utilizar [Swagger UI](http://localhost:3000/api/docs) desde el navegador o importar el [documento OpenAPI](http://localhost:3000/api/docs-json) en Postman mediante **Import**.
+| Recurso          | URL predeterminada                  |
+| ---------------- | ----------------------------------- |
+| Aplicación web   | http://localhost:5173               |
+| API REST         | http://localhost:3000/api           |
+| Swagger UI       | http://localhost:3000/api/docs      |
+| OpenAPI JSON     | http://localhost:3000/api/docs-json |
+| Estado de la API | http://localhost:3000/api/health    |
 
-El documento OpenAPI se genera a partir de la API en ejecución.
+**Puertos y entorno:** `PORT`, `WEB_PORT` y `POSTGRES_PORT` permiten cambiar los puertos publicados por Docker. Si cambias la dirección de la web, ajusta `CORS_ORIGINS`. Si cambias la dirección de la API, actualiza `VITE_API_BASE_URL` en el entorno correspondiente.
 
-En Postman, crea una variable `baseUrl` con el siguiente valor:
+En Docker, `VITE_API_BASE_URL` se pasa **durante la compilación** del frontend; cambiarla requiere reconstruir la imagen web. Debe ser una dirección accesible desde el navegador, no `http://api:3000`, que solo se resuelve dentro de la red de Docker.
 
-```text
-http://localhost:3000/api
-```
+## Funcionalidades
 
-### Endpoints disponibles
+- Exploración de mapas y consulta de detalles, agentes y armas.
+- Registro e inicio de sesión con JWT.
+- Un voto por usuario y mapa, con selección de agente y arma que se puede actualizar.
+- Rankings públicos por mapa, con cantidad de votos y porcentajes.
+- Actualización de resultados después de guardar un voto, sin recargar la página.
 
-| Método | Ruta                       | Acceso     |
-| ------ | -------------------------- | ---------- |
-| GET    | `/api/health`              | Público    |
-| POST   | `/api/auth/register`       | Público    |
-| POST   | `/api/auth/login`          | Público    |
-| GET    | `/api/auth/me`             | Bearer JWT |
-| GET    | `/api/maps`                | Público    |
-| GET    | `/api/maps/:mapId`         | Público    |
-| GET    | `/api/agents`              | Público    |
-| GET    | `/api/agents/:agentId`     | Público    |
-| GET    | `/api/weapons`             | Público    |
-| GET    | `/api/weapons/:weaponId`   | Público    |
-| PUT    | `/api/maps/:mapId/vote`    | Bearer JWT |
-| GET    | `/api/maps/:mapId/vote`    | Bearer JWT |
-| GET    | `/api/maps/:mapId/results` | Público    |
+## Consultar la API
 
-### 1. Registrar un usuario
+La API se documenta en [Swagger UI](http://localhost:3000/api/docs). También puedes importar [OpenAPI JSON](http://localhost:3000/api/docs-json) en Postman. Para los ejemplos, utiliza `http://localhost:3000/api` como `baseUrl`.
 
-**POST** `{{baseUrl}}/auth/register`
+| Método | Ruta                       | Acceso  |
+| ------ | -------------------------- | ------- |
+| GET    | `/api/health`              | Público |
+| POST   | `/api/auth/register`       | Público |
+| POST   | `/api/auth/login`          | Público |
+| GET    | `/api/auth/me`             | JWT     |
+| GET    | `/api/maps`                | Público |
+| GET    | `/api/maps/:mapId`         | Público |
+| GET    | `/api/agents`              | Público |
+| GET    | `/api/agents/:agentId`     | Público |
+| GET    | `/api/weapons`             | Público |
+| GET    | `/api/weapons/:weaponId`   | Público |
+| GET    | `/api/maps/:mapId/vote`    | JWT     |
+| PUT    | `/api/maps/:mapId/vote`    | JWT     |
+| GET    | `/api/maps/:mapId/results` | Público |
 
-Selecciona **Body → raw → JSON** en Postman y envía:
+### Probar registro, sesión y votación
+
+**Registro — `POST /api/auth/register`**
 
 ```json
 {
@@ -189,13 +194,9 @@ Selecciona **Body → raw → JSON** en Postman y envía:
 }
 ```
 
-La API devuelve HTTP 201 con los datos públicos del usuario y un `accessToken`.
+Devuelve HTTP 201 y un `accessToken`. Si ya registraste esa cuenta, utiliza otro usuario y correo.
 
-Utiliza un email y username diferentes si ya registraste esta cuenta.
-
-### 2. Iniciar sesión
-
-**POST** `{{baseUrl}}/auth/login`
+**Inicio de sesión — `POST /api/auth/login`**
 
 ```json
 {
@@ -204,23 +205,9 @@ Utiliza un email y username diferentes si ya registraste esta cuenta.
 }
 ```
 
-`identifier` acepta el username o el email.
+`identifier` puede ser el username o el email. Usa el `accessToken` recibido como **Bearer Token** en Postman o mediante **Authorize** en Swagger para consultar `GET /api/auth/me` y votar.
 
-La respuesta HTTP 200 incluye `accessToken`, `tokenType`, `expiresIn` y `user`.
-
-### 3. Consultar el usuario autenticado
-
-**GET** `{{baseUrl}}/auth/me`
-
-En Postman, selecciona **Authorization → Bearer Token** y pega el `accessToken` recibido.
-
-En Swagger, utiliza la opción **Authorize**.
-
-La API devuelve los datos públicos del usuario autenticado. Por defecto, el token expira después de una hora; vuelve a iniciar sesión cuando expire.
-
-### 4. Consultar el catálogo
-
-Las siguientes peticiones no requieren autenticación:
+**Consultar el catálogo**
 
 ```bash
 curl http://localhost:3000/api/maps
@@ -228,90 +215,45 @@ curl http://localhost:3000/api/agents
 curl http://localhost:3000/api/weapons
 ```
 
-Para consultar un elemento específico, copia su identificador desde la respuesta correspondiente y utilízalo en su endpoint de detalle.
+Copia los identificadores de un mapa, agente y arma activos para enviar el voto.
 
-Las listas incluyen elementos activos. Los agentes incluyen rol y habilidades; las armas incluyen rangos de daño cuando están disponibles.
-
-Los elementos retirados siguen accesibles por su identificador.
-
-### 5. Registrar o consultar tu voto
-
-**PUT** `{{baseUrl}}/maps/:mapId/vote`, con **Authorization → Bearer Token**. Sustituye los identificadores por los obtenidos del catálogo activo:
+**Votar — `PUT /api/maps/:mapId/vote`**, con Bearer Token:
 
 ```json
 {
-  "agentId": "<GUID del agente>",
-  "weaponId": "<GUID del arma>"
+  "agentId": "UUID_DEL_AGENTE",
+  "weaponId": "UUID_DEL_ARMA"
 }
 ```
 
-Devuelve HTTP 200 con `id`, `mapId`, `agentId`, `weaponId`, `createdAt` y `updatedAt`. Repetir el PUT cambia tu voto para ese mapa; si la selección es idéntica, conserva también `updatedAt`. No envíes `userId`: se obtiene del JWT.
+Repetir el PUT permite modificar la elección del mismo mapa. No envíes `userId`: se obtiene del JWT. `GET /api/maps/:mapId/vote` devuelve el voto propio o `null` si todavía no existe.
 
-**GET** sobre la misma ruta devuelve tu voto o JSON `null` (HTTP 200). Permite consultar elecciones históricas aunque sus elementos estén inactivos. El PUT rechaza identificadores mal formados (400), inexistentes (404) o inactivos (422). Ambas operaciones requieren JWT válido (401) y devuelven 503 si el almacenamiento no está disponible.
+**Resultados — `GET /api/maps/:mapId/results`**
 
-### 6. Consultar los resultados de la comunidad
-
-**GET** `{{baseUrl}}/maps/:mapId/results`, sin autenticación. También está disponible en la sección **votes** de Swagger.
-
-Devuelve `mapId`, `totalVotes` y los rankings `agents` y `weapons`. Cada elemento incluye `id`, `displayName`, `displayIcon` (puede ser `null`), `votes` y `percentage`. Solo aparecen elecciones con votos, incluidas las retiradas del catálogo.
-
-Los rankings se ordenan por votos descendentes, con desempate por nombre y UUID. Los porcentajes usan el total del mapa y hasta dos decimales. Un mapa sin votos devuelve total cero y ambas listas vacías; un mapa inexistente devuelve 404.
+Es público. Devuelve `mapId`, `totalVotes` y los rankings `agents` y `weapons`, con número de votos y porcentaje. Un mapa sin votos devuelve un total de cero y listas vacías.
 
 ## Pruebas y validaciones
 
-El backend utiliza **Vitest** como framework de pruebas y **Supertest** para verificar el comportamiento HTTP de la API.
+Los comandos de esta sección requieren **Node.js, pnpm y `pnpm install --frozen-lockfile`**, incluso si ejecutaste la aplicación mediante la opción Docker. Las pruebas no se ejecutan automáticamente al iniciar el proyecto.
 
-Las pruebas automatizadas permiten comprobar funcionalidades existentes y detectar errores después de realizar cambios.
-
-**No se ejecutan automáticamente al iniciar Docker ni al levantar NestJS.** Debes ejecutarlas mediante los comandos correspondientes, salvo que configures posteriormente un proceso de integración continua.
-
-### 1. Pruebas unitarias y de integración aisladas
-
-Requieren Node.js, pnpm y las dependencias del proyecto instaladas.
-
-Desde la raíz del repositorio:
+**Pruebas unitarias y aisladas del backend:**
 
 ```bash
 pnpm test
 ```
 
-Estas pruebas verifican comportamientos del backend utilizando mocks o dependencias controladas. No necesitan consultar Valorant API ni utilizar la base de datos real de desarrollo.
-
-### 2. Pruebas E2E
-
-Las pruebas End-to-End verifican el funcionamiento de los endpoints utilizando una instancia real de PostgreSQL, separada de la base de desarrollo.
-
-Primero, inicia la base de datos de pruebas:
+**Pruebas E2E:** utilizan una base PostgreSQL de pruebas independiente, disponible en el puerto `5433`.
 
 ```bash
 docker compose --profile test up -d --wait db-test
-```
-
-Aplica las migraciones sobre esa base:
-
-```bash
 DATABASE_URL=postgresql://valorant_test:test_only@localhost:5433/valorant_test pnpm db:deploy
-```
-
-Ejecuta las pruebas:
-
-```bash
 TEST_DATABASE_URL=postgresql://valorant_test:test_only@localhost:5433/valorant_test pnpm test:e2e
-```
-
-Finalmente, detén el contenedor de pruebas:
-
-```bash
 docker compose --profile test stop db-test
 ```
 
-La base de pruebas utiliza almacenamiento temporal y debe migrarse nuevamente después de reiniciar su contenedor.
+La base de pruebas utiliza almacenamiento temporal. Después de reiniciar su contenedor, vuelve a aplicar las migraciones antes de ejecutar las E2E. Estas pruebas no deben utilizar la base de desarrollo ni depender de llamadas reales a Valorant API.
 
-Las pruebas E2E no deben utilizar la base de datos de desarrollo ni depender de peticiones reales a Valorant API.
-
-### 3. Validaciones de calidad
-
-Para comprobar el esquema de Prisma, el formato, los tipos y la compilación:
+**Comprobaciones de calidad:**
 
 ```bash
 pnpm db:validate
@@ -320,71 +262,54 @@ pnpm typecheck
 pnpm build
 ```
 
-| Comando            | Función                                                  |
-| ------------------ | -------------------------------------------------------- |
-| `pnpm test`        | Ejecuta las pruebas unitarias y de integración aisladas. |
-| `pnpm test:e2e`    | Ejecuta las pruebas E2E con PostgreSQL de pruebas.       |
-| `pnpm db:validate` | Valida el esquema de Prisma.                             |
-| `pnpm lint`        | Comprueba las reglas de Biome.                           |
-| `pnpm typecheck`   | Comprueba los tipos de TypeScript.                       |
-| `pnpm build`       | Compila el proyecto.                                     |
+| Comando                         | Propósito                                 |
+| ------------------------------- | ----------------------------------------- |
+| `pnpm dev`                      | Ejecutar web y API desde el código fuente |
+| `pnpm dev:web` / `pnpm dev:api` | Ejecutar solamente una aplicación         |
+| `pnpm lint` / `pnpm format`     | Comprobar o corregir código con Biome     |
+| `pnpm typecheck` / `pnpm build` | Revisar tipos o compilar ambos workspaces |
+| `pnpm test` / `pnpm test:e2e`   | Ejecutar las pruebas del backend          |
 
-Las pruebas de votaciones cubren creación, edición, idempotencia sin escritura, aislamiento por usuario/mapa, autenticación, validación, historial inactivo, concurrencia, restricciones PostgreSQL, errores de almacenamiento y contrato OpenAPI.
-
-Las pruebas de resultados cubren acceso público, mapas sin votos, agregación y porcentajes, aislamiento por mapa, edición de votos, empates, historial inactivo y coherencia durante escrituras concurrentes.
-
-Las pruebas automatizadas complementan las consultas HTTP y SQL registradas en [DOC.md](DOC.md). Swagger y Postman permiten explorar la API, sin que esto implique una revisión manual documentada con esas interfaces.
+Actualmente no hay una suite automatizada del frontend. Las verificaciones del backend incluyen autenticación, votaciones, resultados, concurrencia y contratos HTTP.
 
 ## Solución de problemas
 
-| Problema                            | Solución                                                                                                                                            |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| La API no arranca                   | Revisa `docker compose ps -a` y `docker compose logs api migrate`.                                                                                  |
-| Error JWT_SECRET                    | Genera una clave segura con `openssl rand -hex 32` y actualiza `.env`. Después recrea el contenedor de la API.                                      |
-| Error Prisma P1000                  | Comprueba que las credenciales de PostgreSQL y la URL de conexión sean consistentes. Si la base ya existía, sus credenciales pueden ser diferentes. |
-| El catálogo está vacío              | Ejecuta `docker compose exec -T api pnpm catalog:sync`.                                                                                             |
-| Puerto 3000 ocupado                 | Modifica `PORT` en `.env` y utiliza el nuevo puerto en Swagger y Postman.                                                                           |
-| Puerto 5432 ocupado                 | Modifica `POSTGRES_PORT` y el puerto de `DATABASE_URL` para ejecución local. Dentro de Docker se mantiene `db:5432`.                                |
-| HTTP 401                            | Comprueba el token Bearer o vuelve a iniciar sesión.                                                                                                |
-| HTTP 503 en health                  | Comprueba PostgreSQL y los logs de la API.                                                                                                          |
-| Las pruebas E2E fallan por conexión | Comprueba que `db-test` esté ejecutándose, que las migraciones estén aplicadas y que `TEST_DATABASE_URL` apunte a la base de pruebas.               |
+| Problema                            | Qué comprobar                                                                                              |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `vite: command not found`           | Ejecuta `pnpm install --frozen-lockfile` desde la raíz.                                                    |
+| El puerto `5173` está ocupado       | Detén Vite u otro contenedor que use ese puerto; no ejecutes ambas opciones a la vez.                      |
+| El puerto `3000` está ocupado       | Detén el otro proceso/API o ajusta la configuración de puertos.                                            |
+| El puerto `5432` está ocupado       | Cambia `POSTGRES_PORT` y, al utilizar pnpm, el puerto en `DATABASE_URL`.                                   |
+| La API no arranca en Docker         | Revisa `docker compose ps -a` y `docker compose logs api migrate`.                                         |
+| Error de `JWT_SECRET`               | Genera una clave con `openssl rand -hex 32`, actualiza `.env` y reinicia el proceso correspondiente.       |
+| Error Prisma `P1000`                | Comprueba `DATABASE_URL` y las credenciales; un volumen existente puede conservar credenciales anteriores. |
+| Mapas, agentes o armas vacíos       | Ejecuta la sincronización del catálogo según la opción de ejecución elegida.                               |
+| Error HTTP 401                      | Inicia sesión de nuevo o comprueba el Bearer Token.                                                        |
+| Error HTTP 503                      | Verifica el estado de PostgreSQL y los logs de la API.                                                     |
+| Fallan las pruebas E2E por conexión | Comprueba `db-test`, el puerto `5433`, las migraciones y `TEST_DATABASE_URL`.                              |
 
-Para reconstruir los servicios y aplicar migraciones pendientes:
+Si una sincronización detecta identificadores ausentes y se interrumpe, revisa primero la respuesta del proveedor. Solo para retiradas verificadas utiliza el argumento `--retire-id=UUID` documentado por el comando; nunca lo uses para ignorar errores de disponibilidad del catálogo.
 
-```bash
-docker compose up -d --build --wait
-```
-
-Si modificas variables de entorno utilizadas por un contenedor existente, puede ser necesario recrearlo para que cargue los nuevos valores.
-
-## Estructura del proyecto
+## Estructura del repositorio
 
 ```text
 apps/
 ├── api/
 │   ├── prisma/          # Esquema y migraciones
-│   ├── src/
-│   │   ├── config/      # Configuración y entorno
-│   │   ├── database/    # Integración con Prisma
-│   │   ├── common/      # Utilidades compartidas
-│   │   └── modules/     # Health, auth, users, catálogo y votes
+│   ├── src/             # Módulos y lógica de NestJS
 │   ├── test/            # Pruebas automatizadas
 │   └── Dockerfile
-└── web/                 # Exploración, autenticación y votación
-DOC.md                   # Arquitectura, modelo y decisiones
+└── web/
+    ├── src/             # Interfaz React
+    ├── components.json  # Configuración shadcn/ui
+    └── Dockerfile
+
 compose.yaml
 pnpm-workspace.yaml
 pnpm-lock.yaml
+biome.json
+README.md
+DOC.md
 ```
 
-## Documentación técnica
-
-[DOC.md](DOC.md) reúne arquitectura, flujo previsto, ERD completo, decisiones técnicas y uso de IA, distinguiendo lo implementado de lo pendiente.
-
-Consulta `.env.example` para la configuración de entorno.
-
-## Frontend
-
-La configuración y los comandos se describen en **Desarrollo local desde la raíz**.
-
-Disponibles: Maps Explorer, `/login`, `/register` y `/maps/:mapId`. El detalle público permite explorar agentes y armas; la sesión verificada permite consultar, crear o modificar el voto propio. El detalle también muestra los rankings públicos de agentes y armas, el total de votaciones y los porcentajes del backend; se actualizan después de guardar el voto sin recargar la página.
+Para conocer la arquitectura, el flujo funcional, el modelo de datos, las decisiones técnicas y el uso de IA, consulta [DOC.md](DOC.md).
